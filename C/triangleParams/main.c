@@ -3,6 +3,9 @@
 #include<stdbool.h>
 #include<float.h> 
 
+#define EXIT_NUMBER_NEGATIVE -1
+#define EXIT_FAILURE 0
+
 struct object {
     const char key;
     float value;
@@ -56,20 +59,20 @@ void clearInput() {
 }
 float onTriangleSideValue() {
     float sideValue = 0;
-    if (scanf("%f", &sideValue) != 1) {
+    if (!scanf("%f", &sideValue)) {
         printf("Error: Invalid value, please enter a valid number\n");
         clearInput();
-        return -1;
+        return EXIT_NUMBER_NEGATIVE;
     }
     if (!sideValue) {
         printf("Program stopped\n");
-        return 0;
+        return EXIT_FAILURE;
     } else if (sideValue < 0) {
         printf("Error: Number must be positive only\n");
-        return -1;
+        return EXIT_NUMBER_NEGATIVE;
     } else if (sideValue > FLT_MAX) {
         printf("Error: Number must be less than %e\n", FLT_MAX);
-        return -1;
+        return EXIT_NUMBER_NEGATIVE;
     }
     return sideValue;
 }
@@ -82,8 +85,8 @@ bool inputTriangleSides(float* a, float* b, float* c) {
     size_t totalSize = sizeof(triangleSides);
     int triangleSidesLength = totalSize ? totalSize / sizeof(*triangleSides) : totalSize;
     for (int i = 0; i < triangleSidesLength; ++i) {
-       float side = -1; 
-        while (side == -1) {
+       float side = EXIT_NUMBER_NEGATIVE; 
+        while (side == EXIT_NUMBER_NEGATIVE) {
             printf(" Input side %c: ", triangleSides[i].key);
             side = onTriangleSideValue();
             if (!side) {
@@ -121,5 +124,5 @@ bool startProgram() {
 }
 int main() {
     while (startProgram()) {}
-    return 0;
+    return EXIT_FAILURE;
 }
