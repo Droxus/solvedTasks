@@ -5,6 +5,7 @@
 
 #define EXIT_NUMBER_NEGATIVE -1
 #define EXIT_FAILURE 0
+#define FLT_MIN_POSITIVE 0
 
 struct object {
     const char key;
@@ -53,21 +54,17 @@ void outputTriangleParameters(float a, float b, float c) {
     bisectionC = getTriangleBisection(c, b, a, perimeter/2);
     printf(" Bisection to side: {a: %g, b: %g, c: %g}\n", bisectionA, bisectionB, bisectionC);
 }
-void clearInput() {
-    int input;
-    while ((input = getchar()) != '\n' && input != EOF);
-}
 float onTriangleSideValue() {
     float sideValue = 0;
     if (!scanf("%f", &sideValue)) {
         printf("Error: Invalid value, please enter a valid number\n");
-        clearInput();
+        fflush(stdin);
         return EXIT_NUMBER_NEGATIVE;
     }
     if (!sideValue) {
         printf("Program stopped\n");
         return EXIT_FAILURE;
-    } else if (sideValue < 0) {
+    } else if (sideValue < FLT_MIN_POSITIVE) {
         printf("Error: Number must be positive only\n");
         return EXIT_NUMBER_NEGATIVE;
     } else if (sideValue > FLT_MAX) {
@@ -85,34 +82,32 @@ bool inputTriangleSides(float* a, float* b, float* c) {
     size_t totalSize = sizeof(triangleSides);
     int triangleSidesLength = totalSize ? totalSize / sizeof(*triangleSides) : totalSize;
     for (int i = 0; i < triangleSidesLength; ++i) {
-       float side = EXIT_NUMBER_NEGATIVE; 
-        while (side == EXIT_NUMBER_NEGATIVE) {
+       float side;
+       do {
             printf(" Input side %c: ", triangleSides[i].key);
             side = onTriangleSideValue();
             if (!side) {
                 return false;
             }
             triangleSides[i].value = side;
-        }
+       } while (side == EXIT_NUMBER_NEGATIVE);
     }
     *a = triangleSides[0].value;
     *b = triangleSides[1].value;
     *c = triangleSides[2].value;
     return true;
 }
-bool isTriangleValid(float a, float b, float c) {
-    return a + b > c && a + c > b && b + c > a;
-}
 bool startProgram() {
-    float a, b, c = 0; // a, b, c - triangle sides
+    float a = 0, b = 0, c = 0; // a, b, c - triangle sides
 
-    printf("\nInput triangle sides (from %.0f to %.1e) to get triangle parameters. Input 0 to stop program\n",
-    FLT_EPSILON, FLT_MAX);
+    printf("\nInput triangle sides (from %i to %.1e) to get triangle parameters. Input 0 to stop program\n",
+    FLT_MIN_POSITIVE, FLT_MAX);
     if (!inputTriangleSides(&a, &b, &c)) {
         return false;
     }
 
-    if (!isTriangleValid(a, b, c)) {
+    const bool isTriangleValid = a + b > c && a + c > b && b + c > a;
+    if (!isTriangleValid) {
         printf("Error: This triangle does not exist (sum of two sides should be more than third side)\n");
         return true;
     }
