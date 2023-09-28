@@ -7,11 +7,6 @@
 #define EXIT_FAILURE 0
 #define FLT_MIN_POSITIVE 0
 
-struct object {
-    const char key;
-    float value;
-};
-
 float getTrianglePerimeter(float a, float b, float c) {
     return a + b + c;
 }
@@ -28,39 +23,28 @@ float getTriangleBisection(float a, float b, float c, float semiPerimeter) {
     return (2 / (b + c)) * sqrt(b * c * semiPerimeter * (semiPerimeter - a));
 }
 void outputTriangleParameters(float a, float b, float c) {
-    float area, perimeter,
-    heightA, medianA, bisectionA,
-    heightB, medianB, bisectionB,
-    heightC, medianC, bisectionC;
-
-    perimeter = getTrianglePerimeter(a, b, c);
+    float perimeter = getTrianglePerimeter(a, b, c);
     printf(" Perimeter: %g\n", perimeter);
 
-    area = getTriangleArea(a, b, c, perimeter/2);
+    float area = getTriangleArea(a, b, c, perimeter/2);
     printf(" Area: %g\n", area);
 
-    heightA = getTriangleHeight(area, a);
-    heightB = getTriangleHeight(area, b);
-    heightC = getTriangleHeight(area, c);
+    float heightA = getTriangleHeight(area, a);
+    float heightB = getTriangleHeight(area, b);
+    float heightC = getTriangleHeight(area, c);
     printf(" Height to side: {a: %g, b: %g, c: %g}\n", heightA, heightB, heightC);
 
-    medianA = getTriangleMedian(a, b, c);
-    medianB = getTriangleMedian(b, a, c);
-    medianC = getTriangleMedian(c, b, a);
+    float medianA = getTriangleMedian(a, b, c);
+    float medianB = getTriangleMedian(b, a, c);
+    float medianC = getTriangleMedian(c, b, a);
     printf(" Median to side: {a: %g, b: %g, c: %g}\n", medianA, medianB, medianC);
 
-    bisectionA = getTriangleBisection(a, b, c, perimeter/2);
-    bisectionB = getTriangleBisection(b, a, c, perimeter/2);
-    bisectionC = getTriangleBisection(c, b, a, perimeter/2);
+    float bisectionA = getTriangleBisection(a, b, c, perimeter/2);
+    float bisectionB = getTriangleBisection(b, a, c, perimeter/2);
+    float bisectionC = getTriangleBisection(c, b, a, perimeter/2);
     printf(" Bisection to side: {a: %g, b: %g, c: %g}\n", bisectionA, bisectionB, bisectionC);
 }
-float onTriangleSideValue() {
-    float sideValue = 0;
-    if (!scanf("%f", &sideValue)) {
-        printf("Error: Invalid value, please enter a valid number\n");
-        fflush(stdin);
-        return EXIT_NUMBER_NEGATIVE;
-    }
+float getValidSideValue(float sideValue) {
     if (!sideValue) {
         printf("Program stopped\n");
         return EXIT_FAILURE;
@@ -73,35 +57,33 @@ float onTriangleSideValue() {
     }
     return sideValue;
 }
+float getTriangleSideValue(char sideName) {
+    float sideValue = 0;
+    printf(" Input side %c: ", sideName);
+    const int scanfResult = scanf("%f", &sideValue);
+    fflush(stdin);
+    if (!scanfResult) {
+        printf("Error: Invalid value, please enter a valid number\n");
+        return EXIT_NUMBER_NEGATIVE;
+    }
+    return getValidSideValue(sideValue);
+}
 bool inputTriangleSides(float* a, float* b, float* c) {
-    struct object triangleSides[] = {
-        {'a', 0},
-        {'b', 0},
-        {'c', 0},
-    };
+    struct { const char key; float **value; } triangleSides[] = { {'a', &a}, {'b', &b}, {'c', &c} };
     size_t totalSize = sizeof(triangleSides);
     int triangleSidesLength = totalSize ? totalSize / sizeof(*triangleSides) : totalSize;
-    for (int i = 0; i < triangleSidesLength; ++i) {
-       float side;
-       do {
-            printf(" Input side %c: ", triangleSides[i].key);
-            side = onTriangleSideValue();
-            if (!side) {
-                return false;
-            }
-            triangleSides[i].value = side;
-       } while (side == EXIT_NUMBER_NEGATIVE);
-    }
-    *a = triangleSides[0].value;
-    *b = triangleSides[1].value;
-    *c = triangleSides[2].value;
-    return true;
+    for (
+        int i = 0;
+        i < triangleSidesLength && **triangleSides[i].value;
+        **triangleSides[i].value = getTriangleSideValue(triangleSides[i].key), i += **triangleSides[i].value > 0 ? 1 : 0
+    );
+    return *a && *b && *c;
 }
 bool startProgram() {
-    float a = 0, b = 0, c = 0; // a, b, c - triangle sides
+    float a = 1, b = 1, c = 1; // a, b, c - triangle sides
 
-    printf("\nInput triangle sides (from %i to %.1e) to get triangle parameters. Input 0 to stop program\n",
-    FLT_MIN_POSITIVE, FLT_MAX);
+    printf("\nInput triangle sides (from %i to %.1e) to get triangle parameters", FLT_MIN_POSITIVE, FLT_MAX);
+    printf("\n--- Input 0 to stop program ---\n");
     if (!inputTriangleSides(&a, &b, &c)) {
         return false;
     }
@@ -118,6 +100,6 @@ bool startProgram() {
     return true;
 }
 int main() {
-    while (startProgram()) {}
+    while (startProgram());
     return EXIT_FAILURE;
 }
