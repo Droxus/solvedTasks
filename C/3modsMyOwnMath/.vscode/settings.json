@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "stdbool.h": "c",
+        "__locale": "c",
+        "chrono": "c"
+    },
+    "C_Cpp.errorSquiggles": "disabled"
+}
