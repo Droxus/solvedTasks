@@ -53,48 +53,36 @@ double mathCos(double angle) {
     }
     return result * sign;
 }
-double mathArccos(double x) {
-//     // working worng when argument more than 0.5
-//   double cosx = 1.0;
-//   double term = -x * x / 2.0;
-//   int sign = -1;
-//   for (int i = 2; i < maxIterations; i++) {
-//     cosx += term;
-//     term *= x * x / (2 * i * (2 * i + 1)) * sign;
-//     sign *= -1;
-//   }
-
-//   // Calculate the arccosine using the inverse cosine formula.
-//   return MATH_PI / 2 - mathSqrt(1 - cosx * cosx, 2, defaultTolerance);
-    // double arccosine = 0; // Initial guess, can be improved
-    // double previousArccosine = 0;
-    // double sigma = 0;
-
-    // for (int iteration = 0; iteration < maxIterations; ++iteration) {
-    //     arccosine = mathCos(iteration / maxIterations);
-    //     sigma = arccosine - x;
-    //     if (mathAbs(sigma) < 1e-2) {
-    //         return arccosine;
-    //     }
-    // }
-
-    // printf("Warning: Maximum iterations reached without convergence\n");
-    // return arccosine; // Return the best estimate achieved
-    return 0.0;
-}
 bool sqrtCalculationMode() {
-    float base = 32768;
-    int exponent = 5;
-    double tolerance = 1e-5;
+    float base = 0;
+    int exponent = 0;
+    double tolerance = 0;
 
-    if (base && exponent && tolerance) {
+    printf("\nSQRT CALCULATION MODE\n");
+    printf("\nEnter value in format: 10, 5, 3\n1st - base; 2nd - exponent; 3rd - tolerance(optional)\n");
+    printf(" -- Enter 0 - to stop progam, -1 - to main menu --\n");
+    printf("Your input: ");
+    const int scanfResult = scanf("%f, %d, %lf", &base, &exponent, &tolerance);
+    fflush(stdin);
+    if (!base) {
         return false;
+    }
+    if (base == EXIT_NUMBER_NEGATIVE) {
+        return true;
+    }
+    if (scanfResult < 2) {
+        printf("Error: invalid format\n");
+        return sqrtCalculationMode();
+    }
+
+    if (tolerance == 0) {
+        tolerance = defaultTolerance;
     }
 
     double mathSqrtResult = mathSqrt(base, exponent, tolerance);
 
-    printf("Math Sqrt result: %g\n", mathSqrtResult);
-    return true;
+    printf("\nMath Sqrt result: %g\n", mathSqrtResult);
+    return sqrtCalculationMode();
 }
 bool isValidDate(int day, int month, int year) {
     const float maxDaysInMonth = 31;
@@ -105,7 +93,7 @@ bool isValidDate(int day, int month, int year) {
     const bool isYearInRange = (year >= MIN_INT_NUMBER && year <= MAX_SAFE_NUMBER);
 
     if (!(isDayInRange && isMonthInRange && isYearInRange)) {
-        printf("Invalid date format: day(%i; %g); month(%i; %g); year(%i; %g)\n",
+        printf("Invalid date format: day(%i; %g).month(%i; %g).year(%i; %g)\n",
             MIN_INT_NUMBER, maxDaysInMonth, MIN_INT_NUMBER, maxMonthsInYear, MIN_INT_NUMBER, MAX_SAFE_NUMBER);
         return false;
     }
@@ -120,8 +108,8 @@ int getDayOfWeekIndex(int day, int month, int year) {
         return EXIT_NUMBER_NEGATIVE;
     }
     
-    const bool isLeapYear = (year % 100 != 0 && year % 4 == 0) || (year % 100 && year % 400 == 0);
-    const int fixer = (month < 3) ? ((isLeapYear) ?  1 : 2) : 0;
+    const bool isLeapYear = (year % 100 != 0 && year % 4 == 0) || (year % 100 && year % 400 == 0); // according to the formula
+    const int fixer = (month < 3) ? ((isLeapYear) ?  1 : 2) : 0; // according to the formula
     const int dayOfWeekIndex = ((int)(daysInYear * year) + (int)(daysInMonth * month) + day + fixer) % daysInWeek;
 
     return dayOfWeekIndex;
@@ -131,11 +119,17 @@ bool dayOfWeekMode() {
     const int maxElementLength = 10;
     const char days[][maxElementLength] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
 
-    printf("Enter a date: ");
+    printf("\nDAY OF WEEK MODE\n");
+    printf("\nEnter date in format: DAY.MONTH.YEAR\n");
+    printf("-- Enter 0 - to stop progam, -1 - to main menu --\n");
+    printf("Your input: ");
     const int scanfResult = scanf("%d.%d.%d", &day, &month, &year);
     fflush(stdin);
     if (day == 0) {
         return false;
+    }
+    if (day == EXIT_NUMBER_NEGATIVE) {
+        return true;
     }
     if (scanfResult != 3) {
         printf("Invalid date format: it must be like DAY.MONTH.YEAR\n");
@@ -145,10 +139,11 @@ bool dayOfWeekMode() {
     if (dayOfWeekIndex == EXIT_NUMBER_NEGATIVE) {
         return dayOfWeekMode();
     }
-    printf("%s\n", days[dayOfWeekIndex]);
-    return true;
+    printf("\nOutput: %s\n", days[dayOfWeekIndex]);
+    return dayOfWeekMode();
 }
-void getRootsOfCubicEqutions(float a, float b, float c, double roots[3], double *complexPart) {
+const int rootsAmount = 3;
+void getRootsOfCubicEqutions(float a, float b, float c, double roots[rootsAmount], double *complexPart) {
     double p = 0, q = 0, d = 0, r = 0, f = 0, u = 0, v = 0;
 
     p = b - (mathPow(a, 2) / 3);
@@ -177,13 +172,30 @@ void getRootsOfCubicEqutions(float a, float b, float c, double roots[3], double 
     }
 }
 bool solveCubeEquationMode() {
-    float a = -100, b = 5, c = 10;
+    float a = 1, b = 1, c = 1;
     double complexPart = 0;
-    double roots[3];
+    double roots[rootsAmount];
 
-    if (!(a && b && c)) {
+    printf("\nCUBE EQUATION CALCULATOR MODE\n");
+    printf("\nEnter coefficient of cube equation: a, b, c\n");
+    printf("Valid format sample: 4, 5, 6\n");
+    printf("-- Enter 0 - to stop progam, -1 - to go main menu --\n");
+    printf("Your input: ");
+
+    const int scanfResult = scanf("%f, %f, %f", &a, &b, &c);
+    fflush(stdin);
+    if (!a) {
         return false;
     }
+    if (a == EXIT_NUMBER_NEGATIVE) {
+        return true;
+    }
+    const int scanfArgumentsAmount = 3;
+    if (scanfResult != scanfArgumentsAmount) {
+        printf("Error: invalid format\n");
+        return solveCubeEquationMode();
+    }
+
     const bool isAValid = (a < MAX_SAFE_NUMBER && a > -MAX_SAFE_NUMBER);
     const bool isBValid = (b < MAX_SAFE_NUMBER && b > -MAX_SAFE_NUMBER);
     const bool isCValid = (c < MAX_SAFE_NUMBER && c > -MAX_SAFE_NUMBER);
@@ -194,19 +206,24 @@ bool solveCubeEquationMode() {
 
     getRootsOfCubicEqutions(a, b, c, roots, &complexPart);
     
-    if (complexPart != 0) {
-        printf("y1 = %lf, y2 = %lf+%lfi, y3 = %lf-%lfi \n", roots[0], roots[1], complexPart, roots[2], complexPart);
-    } else {
+    printf("\nRoots: ");
+    const bool noComplexPart = (complexPart == 0);
+    if (noComplexPart) {
         printf("y1 = %lf, y2 = %lf, y3 = %lf \n", roots[0], roots[1], roots[2]);
+    } else {
+        printf("y1 = %lf, y2 = %lf+%lfi, y3 = %lf-%lfi \n", roots[0], roots[1], complexPart, roots[2], complexPart);
     }
-    return true;
+    return solveCubeEquationMode();
+}
+bool stopProgram() {
+    return false;
 }
 bool runProgram() {
+    bool (*modes[])() = {stopProgram, sqrtCalculationMode, dayOfWeekMode, solveCubeEquationMode};
     int modeIndex = 0;
-    // double result = mathArccos(mathCos(0.2));
-    // printf("Arccos = %lf \n", result);
-    printf("Select program mode:\n");
-    printf("-- Write 0 to stop program --\n");
+
+    printf("\nSelect program mode:\n");
+    printf("-- Enter number 0 to stop program --\n");
     printf(" 1) Enter number 1 to select Sqrt Calculation Mode\n");
     printf(" 2) Enter number 2 to select Day Of Week Mode\n");
     printf(" 3) Enter number 3 to select Solve Cube Equation Mode\n");
@@ -218,35 +235,16 @@ bool runProgram() {
         printf("Invalid value: enter integer number (0, 1, 2, 3)\n");
         return true;
     }
-    printf("%d", modeIndex);
-    switch (modeIndex) {
-        case 0:
-            return false;
-            break;
-        case 1:
-            return sqrtCalculationMode();
-            break;
-        case 2:
-            return dayOfWeekMode();
-            break;
-        case 3:
-            return solveCubeEquationMode();
-            break;
-    
-        default:
-            return true;
-            break;
+    const int modeLastIndex = 3;
+    const int modeFirstIndex = 0;
+    if (modeFirstIndex > modeIndex || modeIndex > modeLastIndex) {
+        return true;
     }
-    // return sqrtCalculationMode();
-    // return dayOfWeekMode();
-    // return solveCubeEquationMode();
-    
 
-    return true;
+    return modes[modeIndex]();
 }
 
 int main() {
-    runProgram();
-    // while(runProgram());
+    while(runProgram());
     return 0;
 }
