@@ -54,52 +54,7 @@ int isInRange(double value, double min, double max) {
     return 0;
 }
 
-int runProgram() {
-    int size = 3;
-    int scanfResult = 0;
-    double tolerance = 0.0;
-    double stopValue = 0.0;
-
-    printf("\nSLE CALCULARTOR\n");
-    printf("Enter 0 to stop program\n\n");
-
-    do getValue("Input amount of unknows (%d, %d): ", "%d", &size, MIN_MATRIX_SIZE, MAX_MATRIX_SIZE);
-    while (!isInRange(size, MIN_MATRIX_SIZE, MAX_MATRIX_SIZE) && size != 0);
-    if (!size) return 0;
-
-    do getValue("Input tolerance (%.0e, %d): ", "%lf", &tolerance, MIN_TOLERANCE, MAX_TOLERANCE);
-    while (!isInRange(tolerance, MIN_TOLERANCE, MAX_TOLERANCE) && tolerance != 0.0);
-    if (!tolerance) return 0;
-
-    do getValue("Enter a stop value by which you will be can stop program in any time (%.0e, %.0e): ",
-        "%lf", &stopValue, MIN_FLOAT, MAX_FLOAT);
-    while (!isInRange(stopValue, MIN_FLOAT, MAX_FLOAT) && size != stopValue);
-
-    double **A = (double **)malloc(size * sizeof(double *));
-    double *B = (double *)malloc(size * sizeof(double));
-    double *X = (double *)malloc(size * sizeof(double));
-
-    for (int i = 0; i < size; i++) {
-        A[i] = (double *)malloc(size * sizeof(double));
-        X[i] = 0.0;
-    }
-
-    for (int i = 0; i < size; i++) {
-        for (int j = 0; j < size; j++) {
-            do getValue("Enter A[%d, %d]: ", "%lf", &A[i][j], i+1, j+1);
-            while (!isInRange(A[i][j], MIN_FLOAT, MAX_FLOAT));
-            if (A[i][j] == stopValue) return 0;
-        }
-        do getValue("Enter B[%d]: ", "%lf", &B[i], i+1);
-        while (!isInRange(B[i], MIN_FLOAT, MAX_FLOAT));
-        if (B[i] == stopValue) return 0;
-    }
-
-    if (!isDiagonallyDominant(size, A)) {
-        printf("The matrix is not diagonally dominant. Iterative methods may not converge reliably.\n");
-        return 0;
-    }
-
+void solveSLE(int size, double tolerance, double **A, double *B, double *X) {
     for (int iter = 0; iter < MAX_ITERATIONS; iter++) {
         double *newX = (double *)malloc(size * sizeof(double));
 
@@ -130,7 +85,27 @@ int runProgram() {
             break;
         }
     }
+}
 
+int inputSettings(int *size, double *tolerance, double *stopValue) {
+    char* sizeMsg = "Input amount of unknows (%d, %d): ";
+    do getValue(sizeMsg, "%d", size, MIN_MATRIX_SIZE, MAX_MATRIX_SIZE);
+    while (!isInRange(*size, MIN_MATRIX_SIZE, MAX_MATRIX_SIZE) && *size != 0);
+    if (!*size) return 0;
+
+    char* toleranceMsg = "Input tolerance (%.0e, %d): ";
+    do getValue(toleranceMsg, "%lf", tolerance, MIN_TOLERANCE, MAX_TOLERANCE);
+    while (!isInRange(*tolerance, MIN_TOLERANCE, MAX_TOLERANCE) && *tolerance != 0.0);
+    if (!*tolerance) return 0;
+
+    char* stopValueMsg = "Enter a stop value by which you can stop the program at any time (%.0e, %.0e): ";
+    do getValue(stopValueMsg, "%lf", stopValue, MIN_FLOAT, MAX_FLOAT);
+    while (!isInRange(*stopValue, MIN_FLOAT, MAX_FLOAT) && *size != *stopValue);
+
+    return 1;
+}
+
+void clearMatrixes(int size, double **A, double *B, double *X) {
     free(X);
     free(B);
     
@@ -138,6 +113,61 @@ int runProgram() {
         free(A[i]);
 
     free(A);
+}
+
+int matrixInput(int size, double stopValue, double **A, double *B) {
+    for (int i = 0; i < size; i++) {
+        for (int j = 0; j < size; j++) {
+            do getValue("Enter A[%d, %d]: ", "%lf", &A[i][j], i+1, j+1);
+            while (!isInRange(A[i][j], MIN_FLOAT, MAX_FLOAT));
+            if (A[i][j] == stopValue) 
+                return 0;
+        }
+        do getValue("Enter B[%d]: ", "%lf", &B[i], i+1);
+        while (!isInRange(B[i], MIN_FLOAT, MAX_FLOAT));
+        if (B[i] == stopValue) 
+            return 0;
+    }
+
+    return 1;
+}
+
+int runProgram() {
+    int size = 0;
+    double tolerance = 0.0, stopValue = 0.0;
+    double **A, *B, *X;
+
+    printf("\n\nSLE CALCULARTOR\n Enter 0 to stop program\n\n");
+
+    if (!inputSettings(&size, &tolerance, &stopValue))
+        return 0;
+
+    A = (double **)malloc(size * sizeof(double *));
+    B = (double *)malloc(size * sizeof(double));
+    X = (double *)malloc(size * sizeof(double));
+
+    for (int i = 0; i < size; i++) {
+        A[i] = (double *)malloc(size * sizeof(double));
+        X[i] = 0.0;
+    }
+
+    if (!matrixInput(size, stopValue, A, B))
+        return 0;
+
+    if (!isDiagonallyDominant(size, A)) {
+        printf("The matrix is not diagonally dominant. Iterative methods may not converge reliably.\n");
+        clearMatrixes(size, A, B, X);
+        return 1;
+    }
+
+    solveSLE(size, tolerance, A, B, X);
+
+    printf("\nResult: ");
+    const int decimalPlaces = log10(1.0 / tolerance);
+    for (int i = 0; i < size; i++)
+        printf("x%d: %.*g, ", i+1, decimalPlaces, X[i]);
+
+    clearMatrixes(size, A, B, X);
 
     return 1;
 }

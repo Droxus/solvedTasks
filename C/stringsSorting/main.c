@@ -78,6 +78,7 @@ int inputSettings(string msg) {
 }
 
 int runProgram() {
+    printf("STRINGS SORTING\n");
     printf("Enter 0 to stop program\n");
     
     int stringsNumber = inputSettings("Enter the number of strings [max %i]: ");
