@@ -3,6 +3,7 @@
 #include <sys/stat.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 #define UNDEFINED -1
 #define STOP_PROGRAM 0
@@ -203,6 +204,7 @@ void sortRegion(char* regionName, int mode, int isReversed) {
     fclose(file);
 
     int needToSwap = 0;
+    isReversed = isReversed == 1 ? 0 : 1;
 
     for (i = 0; i < cityNum; i++) {
         for (int j = i+1; j < cityNum; j++) {
@@ -259,16 +261,37 @@ struct {
     void (*delete)(char*, char*);
 } city = {createCity, editCity, deleteCity};
 
+int fileExists(const char *filename) {
+    if (access(filename, F_OK) == -1) {
+        printf("\nThis region does not exist yet\n");
+        return 0;
+    } else {
+        printf("\nThis region already exists\n");
+        return 1;
+    }
+}
+
+void input(void *value, char* scanfHolder, char* msg) {
+    const int amountOfParams = 1;
+    int scanfResult = 0;
+
+    do {
+        printf("%s", msg);
+        scanfResult = scanf(scanfHolder, value);
+        fflush(stdin);
+    } while (scanfResult != amountOfParams);
+}
+
 void displayMenu() {
     printf("\n\n=== Main Menu ===\n\n 1. Region Operations\n 2. City Operations\n 0. Exit\n");
-    printf("\nEnter your choice: ");
 }
 
 void handleRegionOperations() {
     const char* folderPath = "./";
     char regionName[MAX_INPUT_LENGTH] = "";
     
-    int input = UNDEFINED;
+    int choice = UNDEFINED;
+    int needToDeleteRegion = 0;
     char newName[MAX_INPUT_LENGTH];
     int sortOption, isReversedSorting, deleteOption;
 
@@ -276,54 +299,58 @@ void handleRegionOperations() {
         displayRegions(folderPath);
         printf("\n\n=== Region Operations ===\n\n");
         printf(" 1. Create Region\n 2. Read Region\n 3. Rename Region\n 4. Sort Region\n 5. Delete Region\n 0. Back to Main Menu\n");
-        printf("\nEnter your choice: ");
-        scanf("%d", &input);
-        fflush(stdin);
+        input(&choice, "%d", "Input: ");
 
-        switch (input) {
+        switch (choice) {
             case CREATE_REGION_MODE:
-                printf("Enter the name of the region to create: ");
-                scanf(INPUT_SCANF_HOLDER, regionName);
-                fflush(stdin);
-                strcat(regionName, FILE_EXT);
+                do {
+                    input(&regionName, INPUT_SCANF_HOLDER, "Enter the name of the region to create: ");
+                    strcat(regionName, FILE_EXT);
+                } while (fileExists(regionName));
+
                 region.create(regionName);
                 break;
             case READ_REGION_MODE:
-                printf("Enter the name of the region to read: ");
-                scanf(INPUT_SCANF_HOLDER, regionName);
-                fflush(stdin);
-                strcat(regionName, FILE_EXT);
+                do {
+                    input(&regionName, INPUT_SCANF_HOLDER, "Enter the name of the region to read: ");
+                    strcat(regionName, FILE_EXT);
+                } while (!fileExists(regionName));
+
                 region.read(regionName);
                 break;
             case RENAME_REGION_MODE:
-                printf("Enter the current name of the region: ");
-                scanf(INPUT_SCANF_HOLDER, regionName);
-                fflush(stdin);
-                strcat(regionName, FILE_EXT);
-                printf("Enter the new name of the region: ");
-                scanf(INPUT_SCANF_HOLDER, newName);
-                fflush(stdin);
-                strcat(newName, FILE_EXT);
+                do {
+                    input(&regionName, INPUT_SCANF_HOLDER, "Enter the current name of the region: ");
+                    strcat(regionName, FILE_EXT);
+                } while (!fileExists(regionName));
+
+                do {
+                    input(&newName, INPUT_SCANF_HOLDER, "Enter the new name of the region: ");
+                    strcat(newName, FILE_EXT);
+                } while (fileExists(newName));
+
                 region.rename(regionName, newName);
                 break;
             case SORT_REGION_MODE:
-                printf("Enter the name of the region to sort: ");
-                scanf(INPUT_SCANF_HOLDER, regionName);
-                fflush(stdin);
-                strcat(regionName, FILE_EXT);
-                printf("Enter sorting options, sort by:\n 1. Name\n 2. Population\n 3. Area\n Input: ");
-                scanf("%d", &sortOption);
-                printf("Enter sorting options (is reversed sorting?)\n 1. Yes\n 2. No\n Input: ");
-                scanf("%d", &isReversedSorting);
+                do {
+                    input(&regionName, INPUT_SCANF_HOLDER, "Enter the name of the region to sort: ");
+                    strcat(regionName, FILE_EXT);
+                } while (!fileExists(regionName));
+
+                input(&sortOption, "%d", "Enter sorting options, sort by:\n 1. Name\n 2. Population\n 3. Area\n Input: ");
+                input(&isReversedSorting, "%d", "Enter sorting options: \n 1. Ascending (ASC)\n 2. Descending (DESC)\n Input: ");
+
                 region.sort(regionName, sortOption, isReversedSorting);
                 region.read(regionName);
                 break;
             case DELETE_REGION_MODE:
-                printf("Enter the name of the region to delete: ");
-                scanf(INPUT_SCANF_HOLDER, regionName);
-                fflush(stdin);
-                strcat(regionName, FILE_EXT);
-                region.delete(regionName);
+                input(&regionName, INPUT_SCANF_HOLDER, "Enter the name of the region to delete: ");
+                printf("Are you sure you want to delete the region %s?", regionName);
+                input(&needToDeleteRegion, "%d", "\n 1. Yes\n 2. No\nInput: ");
+                if (needToDeleteRegion == 1) {
+                    strcat(regionName, FILE_EXT);
+                    region.delete(regionName);
+                }
                 break;
             case EXIT_VALUE:
                 printf("Returning to the main menu.\n");
@@ -331,56 +358,49 @@ void handleRegionOperations() {
             default:
                 printf("Invalid choice. Please enter a valid option.\n");
         }
-    } while (input != EXIT_VALUE);
+    } while (choice != EXIT_VALUE);
 }
 
 void handleCityOperations() {
-    int input = UNDEFINED;
+    int choice = UNDEFINED;
     char cityName[MAX_INPUT_LENGTH];
     city_t newCity;
 
     char regionName[MAX_INPUT_LENGTH] = "";
     char fileName[MAX_INPUT_LENGTH] = "";
 
-    printf("Enter the name of the region: ");
-    scanf(INPUT_SCANF_HOLDER, regionName);
-    fflush(stdin);
-    strcpy(fileName, regionName);
-    strcat(fileName, FILE_EXT);
+
+    do {
+        input(&regionName, INPUT_SCANF_HOLDER, "Enter the name of the region: ");
+        strcpy(fileName, regionName);
+        strcat(fileName, FILE_EXT);
+    } while (!fileExists(fileName));
 
     do {
         region.read(fileName);
         printf("\n\n=== City Operations ===\n");
         printf("-> Region: %s\n", regionName);
-        printf(" 1. Create City\n 2. Edit City\n 3. Delete City\n 0. Back to Main Menu\n");
-        printf("\nEnter your choice: ");
-        scanf("%d", &input);
-        fflush(stdin);
+        input(&choice, "%d", " 1. Create City\n 2. Edit City\n 3. Delete City\n 0. Back to Main Menu\n Input: ");
 
-        switch (input) {
+        switch (choice) {
             case CREATE_CITY_MODE:
-                printf("Enter the Name of the city to create: ");
-                scanf(INPUT_SCANF_HOLDER, newCity.name);
-                printf("Enter the Population of the city to create: ");
-                scanf("%d", &newCity.population);
-                printf("Enter the Area of the city to create: ");
-                scanf("%f", &newCity.area);
+                input(&newCity.name, INPUT_SCANF_HOLDER, "Enter the Name of the city to create: ");
+                input(&newCity.population, "%d", "Enter the Population of the city to create: ");
+                input(&newCity.area, "%f", "Enter the Area of the city to create: ");
+
                 city.create(fileName, &newCity);
                 break;
             case EDIT_CITY_MODE:
-                printf("Enter the current name of the city: ");
-                scanf(INPUT_SCANF_HOLDER, cityName);
-                printf("Enter the new Name of the city: ");
-                scanf(INPUT_SCANF_HOLDER, newCity.name);
-                printf("Enter the new Population of the city: ");
-                scanf("%d", &newCity.population);
-                printf("Enter the new Area of the city: ");
-                scanf("%f", &newCity.area);
+                input(&cityName, INPUT_SCANF_HOLDER, "Enter the current name of the city: ");
+                input(&newCity.name, INPUT_SCANF_HOLDER, "Enter the new Name of the city: ");
+                input(&newCity.population, "%d", "Enter the new Population of the city: ");
+                input(&newCity.area, "%f", "Enter the new Area of the city: ");
+
                 city.edit(fileName, cityName, newCity);
                 break;
             case DELETE_CITY_MODE:
-                printf("Enter the name of the city to delete: ");
-                scanf(INPUT_SCANF_HOLDER, cityName);
+                input(&cityName, INPUT_SCANF_HOLDER, "Enter the name of the city to delete: ");
+
                 city.delete(fileName, cityName);
                 break;
             case EXIT_VALUE:
@@ -389,18 +409,20 @@ void handleCityOperations() {
             default:
                 printf("Invalid choice. Please enter a valid option.\n");
         }
-    } while (input != EXIT_VALUE);
+    } while (choice != EXIT_VALUE);
 }
 
 int main() {
-    int input = UNDEFINED;
+    const char* folderPath = "./";
+    int choice = UNDEFINED;
+    printf("\nWith this program, you can create regions and cities.\n");
 
     do {
+        displayRegions(folderPath);
         displayMenu();
-        scanf("%d", &input);
-        fflush(stdin);
+        input(&choice, "%d", "Input: ");
 
-        switch (input) {
+        switch (choice) {
             case REGION_OPERATIONS_MODE:
                 handleRegionOperations();
                 break;
@@ -413,7 +435,7 @@ int main() {
             default:
                 printf("Invalid input. Please enter a valid option.\n");
         }
-    } while (input != STOP_PROGRAM);
+    } while (choice != STOP_PROGRAM);
 
     return EXIT_SUCCESS;
 }
