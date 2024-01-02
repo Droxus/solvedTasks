@@ -7,10 +7,19 @@
 
 #define UNDEFINED -1
 #define STOP_PROGRAM 0
+#define STOP_PROGRAM_CHAR '0'
 #define EXIT_VALUE 0
+#define EXIT_FAIL -1
+#define EXIT_OKAY 1
+#define ITEMS_NUM 1
+#define ONLY_CHAR 1
+#define FIRST_CHAR 0
 #define MAX_INPUT_LENGTH 30
 #define MAX_FILE_NAME_LENGTH 256
 #define FILE_EXT ".region"
+#define FILE_EXT_LENGTH 7
+#define STOP_PROGRAM_VALUE_LENGTH (1 + FILE_EXT_LENGTH)
+#define FOLDER_PATH "./"
 #define INPUT_SCANF_HOLDER "%29s"
 
 #define SORT_BY_NAME 1
@@ -30,6 +39,8 @@
 #define SORT_REGION_MODE 4
 #define DELETE_REGION_MODE 5
 
+#define TRUE 1
+#define FALSE 0
 
 FILE *file;
 
@@ -39,7 +50,6 @@ typedef struct {
     float area;
 } city_t;
 
-
 void createCity(char* fileName, city_t* newCity) {
     file = fopen(fileName, "ab");
     if (file == NULL) {
@@ -47,7 +57,7 @@ void createCity(char* fileName, city_t* newCity) {
         return;
     }
 
-    fwrite(newCity, sizeof(city_t), 1, file);
+    fwrite(newCity, sizeof(city_t), ITEMS_NUM, file);
     fclose(file);
 }
 
@@ -61,7 +71,7 @@ void deleteCity(char* fileName, char* cityNameToDelete) {
     int cityNum = 0;
     city_t currentCity = {"", 0, 0.0};
 
-    while (fread(&currentCity, sizeof(city_t), 1, file) && ++cityNum);
+    while (fread(&currentCity, sizeof(city_t), ITEMS_NUM, file) && ++cityNum);
 
     city_t cities[cityNum];
     rewind(file);
@@ -94,13 +104,13 @@ void editCity(char* fileName, char* cityNameToEdit, city_t newCity) {
     int cityNum = 0;
     city_t currentCity = {"", 0, 0.0};
 
-    while (fread(&currentCity, sizeof(city_t), 1, file) && ++cityNum);
+    while (fread(&currentCity, sizeof(city_t), ITEMS_NUM, file) && ++cityNum);
 
     city_t cities[cityNum];
     rewind(file);
 
     int i = 0;
-    while (fread(&currentCity, sizeof(city_t), 1, file))
+    while (fread(&currentCity, sizeof(city_t), ITEMS_NUM, file))
         cities[i++] = strcmp(currentCity.name, cityNameToEdit) ? currentCity : newCity;
 
     fclose(file);
@@ -116,8 +126,6 @@ void editCity(char* fileName, char* cityNameToEdit, city_t newCity) {
     fclose(file);
 }
 
-
-
 void displayRegions(const char* folderPath) {
     DIR* directory = opendir(folderPath);
 
@@ -126,7 +134,7 @@ void displayRegions(const char* folderPath) {
         return;
     }
 
-    int cityNum = 0;
+    int regionNum = 0;
     struct dirent* entry;
 
     printf("\n=-=-= Regions =-=-=\n");
@@ -143,14 +151,17 @@ void displayRegions(const char* folderPath) {
         if (stat(filePath, &fileStat) || fileExt == NULL || strcmp(fileExt, FILE_EXT))
             continue;
 
+        const int nameLength = strlen(entry->d_name) - FILE_EXT_LENGTH;
         const int citiesAmount = fileStat.st_size / sizeof(city_t);
-        printf(" [%d] %.*s \t [%d cities]\n", ++cityNum, MAX_INPUT_LENGTH, entry->d_name, citiesAmount);
+        printf(" [%d] %.*s \t [%d cities]\n", ++regionNum, nameLength, entry->d_name, citiesAmount);
+    }
+
+    if (regionNum < 1) {
+        printf("This region does not yet contain any cities.\nCreate city to fill this list.\n");
     }
 
     closedir(directory);
 }
-
-
 
 void createRegion(char* regionName) {
     file = fopen(regionName, "w");
@@ -170,12 +181,16 @@ void readRegion(char* regionName) {
     int cityNum = 0;
     city_t currentCity = {"", 0, 0.0};
 
-    while (fread(&currentCity, sizeof(city_t), 1, file))
+    while (fread(&currentCity, sizeof(city_t), ITEMS_NUM, file))
         printf(" [%d] %.*s \t [%d habitants, %g km^2]\n", 
             ++cityNum, MAX_INPUT_LENGTH, currentCity.name, currentCity.population, currentCity.area
         );
 
     fclose(file);
+
+    if (cityNum < 1) {
+        printf("\nThis region does not yet contain any cities.\nCreate city to fill this list.\n");
+    }
 }
 
 void renameRegion(char* oldName, char* newName) {
@@ -192,19 +207,18 @@ void sortRegion(char* regionName, int mode, int isReversed) {
     int cityNum = 0;
     city_t currentCity = {"", 0, 0.0};
 
-    while (fread(&currentCity, sizeof(city_t), 1, file) && ++cityNum);
+    while (fread(&currentCity, sizeof(city_t), ITEMS_NUM, file) && ++cityNum);
 
     int i = 0;
     city_t cities[cityNum];
     rewind(file);
 
-    while (fread(&currentCity, sizeof(city_t), 1, file))
+    while (fread(&currentCity, sizeof(city_t), ITEMS_NUM, file))
         cities[i++] = currentCity;
 
     fclose(file);
 
     int needToSwap = 0;
-    isReversed = isReversed == 1 ? 0 : 1;
 
     for (i = 0; i < cityNum; i++) {
         for (int j = i+1; j < cityNum; j++) {
@@ -223,6 +237,10 @@ void sortRegion(char* regionName, int mode, int isReversed) {
                     needToSwap = isReversed ? 
                                     cities[i].area < cities[j].area :
                                     cities[i].area > cities[j].area;
+                    break;
+                default:
+                    printf("\nWrong sorting parameters");
+                    return;
                     break;
             }
             if (needToSwap) {
@@ -262,18 +280,18 @@ struct {
 } city = {createCity, editCity, deleteCity};
 
 int fileExists(const char *filename) {
-    if (access(filename, F_OK) == -1) {
+    if (access(filename, F_OK) == EXIT_FAIL) {
         printf("\nThis region does not exist yet\n");
-        return 0;
+        return FALSE;
     } else {
         printf("\nThis region already exists\n");
-        return 1;
+        return TRUE;
     }
 }
 
 void input(void *value, char* scanfHolder, char* msg) {
     const int amountOfParams = 1;
-    int scanfResult = 0;
+    int scanfResult = UNDEFINED;
 
     do {
         printf("%s", msg);
@@ -282,74 +300,103 @@ void input(void *value, char* scanfHolder, char* msg) {
     } while (scanfResult != amountOfParams);
 }
 
+int inputRegionName(char* regionName, int doesFileExist, char* msg) {
+    const int amountOfParams = 1;
+    int scanfResult = UNDEFINED;
+
+    printf("Tip: Enter %c to cancel action\n", STOP_PROGRAM_CHAR);
+
+    do {
+        printf("Enter the name of the region %s (name without spaces and dots, max 30 chars): ", msg);
+        scanfResult = scanf(INPUT_SCANF_HOLDER, regionName);
+        fflush(stdin);
+        strcat(regionName, FILE_EXT);
+
+        if (doesFileExist == FALSE && strlen(regionName) == STOP_PROGRAM_VALUE_LENGTH && regionName[FIRST_CHAR] == STOP_PROGRAM_CHAR)
+            break;
+    } while (scanfResult != amountOfParams || fileExists(regionName) == doesFileExist);
+
+    if (strlen(regionName) == STOP_PROGRAM_VALUE_LENGTH && regionName[FIRST_CHAR] == STOP_PROGRAM_CHAR) {
+        printf("Cancel.\n");
+    } else {
+        return EXIT_OKAY;
+    }
+
+    return EXIT_VALUE;
+}
+
 void displayMenu() {
     printf("\n\n=== Main Menu ===\n\n 1. Region Operations\n 2. City Operations\n 0. Exit\n");
 }
 
 void handleRegionOperations() {
-    const char* folderPath = "./";
     char regionName[MAX_INPUT_LENGTH] = "";
     
     int choice = UNDEFINED;
-    int needToDeleteRegion = 0;
+    int needToDeleteRegion = UNDEFINED;
     char newName[MAX_INPUT_LENGTH];
-    int sortOption, isReversedSorting, deleteOption;
+    int sortOption = UNDEFINED, isReversedSorting = UNDEFINED, deleteOption = UNDEFINED;
 
     do {
-        displayRegions(folderPath);
+        displayRegions(FOLDER_PATH);
         printf("\n\n=== Region Operations ===\n\n");
         printf(" 1. Create Region\n 2. Read Region\n 3. Rename Region\n 4. Sort Region\n 5. Delete Region\n 0. Back to Main Menu\n");
         input(&choice, "%d", "Input: ");
 
         switch (choice) {
             case CREATE_REGION_MODE:
-                do {
-                    input(&regionName, INPUT_SCANF_HOLDER, "Enter the name of the region to create: ");
-                    strcat(regionName, FILE_EXT);
-                } while (fileExists(regionName));
-
-                region.create(regionName);
+                printf("\n--- Region Creating ---\n");
+                
+                if (inputRegionName(regionName, TRUE, "to create") == EXIT_OKAY) {
+                    region.create(regionName);
+                }
                 break;
             case READ_REGION_MODE:
-                do {
-                    input(&regionName, INPUT_SCANF_HOLDER, "Enter the name of the region to read: ");
-                    strcat(regionName, FILE_EXT);
-                } while (!fileExists(regionName));
+                printf("\n--- Region Reading ---\n");
 
-                region.read(regionName);
+                if (inputRegionName(regionName, FALSE, "to read") == EXIT_OKAY) {
+                    region.read(regionName);
+                }
                 break;
             case RENAME_REGION_MODE:
-                do {
-                    input(&regionName, INPUT_SCANF_HOLDER, "Enter the current name of the region: ");
-                    strcat(regionName, FILE_EXT);
-                } while (!fileExists(regionName));
+                printf("\n--- Region Renaming ---\n");
 
-                do {
-                    input(&newName, INPUT_SCANF_HOLDER, "Enter the new name of the region: ");
-                    strcat(newName, FILE_EXT);
-                } while (fileExists(newName));
-
-                region.rename(regionName, newName);
+                if (inputRegionName(regionName, FALSE, "before renaming") == EXIT_OKAY) {
+                    if (inputRegionName(newName, TRUE, "after renaming") == EXIT_OKAY) {
+                        region.rename(regionName, newName);
+                    }
+                }
                 break;
             case SORT_REGION_MODE:
-                do {
-                    input(&regionName, INPUT_SCANF_HOLDER, "Enter the name of the region to sort: ");
-                    strcat(regionName, FILE_EXT);
-                } while (!fileExists(regionName));
+                printf("\n--- Region Sorting ---\n");
 
-                input(&sortOption, "%d", "Enter sorting options, sort by:\n 1. Name\n 2. Population\n 3. Area\n Input: ");
-                input(&isReversedSorting, "%d", "Enter sorting options: \n 1. Ascending (ASC)\n 2. Descending (DESC)\n Input: ");
+                if (inputRegionName(regionName, FALSE, "to sort") == EXIT_OKAY) {
+                    input(&sortOption, "%d", 
+                        "Enter sorting options, sort by:\n 1. Name\n 2. Population\n 3. Area\n Input: ");
+                    input(&isReversedSorting, "%d", 
+                        "Enter sorting options: \n 1. Ascending (ASC)\n 2. Descending (DESC)\n Input: ");
+                    isReversedSorting = isReversedSorting - 1;
 
-                region.sort(regionName, sortOption, isReversedSorting);
-                region.read(regionName);
+                    region.sort(regionName, sortOption, isReversedSorting);
+                    region.read(regionName);
+                }
                 break;
             case DELETE_REGION_MODE:
+                printf("\n--- Region Deleting ---\n");
+                printf("Tip: Enter %c to cancel action\n", STOP_PROGRAM_CHAR);
+
                 input(&regionName, INPUT_SCANF_HOLDER, "Enter the name of the region to delete: ");
-                printf("Are you sure you want to delete the region %s?", regionName);
-                input(&needToDeleteRegion, "%d", "\n 1. Yes\n 2. No\nInput: ");
-                if (needToDeleteRegion == 1) {
-                    strcat(regionName, FILE_EXT);
-                    region.delete(regionName);
+
+                if (strlen(regionName) == ONLY_CHAR && regionName[FIRST_CHAR] == STOP_PROGRAM_CHAR) {
+                    printf("Cancel.\n");
+                } else {
+                    printf("Are you sure you want to delete the region %s?", regionName);
+                    input(&needToDeleteRegion, "%d", "\n 1. Yes\n 2. No\nInput: ");
+
+                    if (needToDeleteRegion == TRUE) {
+                        strcat(regionName, FILE_EXT);
+                        region.delete(regionName);
+                    }
                 }
                 break;
             case EXIT_VALUE:
@@ -367,41 +414,47 @@ void handleCityOperations() {
     city_t newCity;
 
     char regionName[MAX_INPUT_LENGTH] = "";
-    char fileName[MAX_INPUT_LENGTH] = "";
 
+    if (inputRegionName(regionName, FALSE, "to read") == EXIT_VALUE) {
+        return;
+    }
 
-    do {
-        input(&regionName, INPUT_SCANF_HOLDER, "Enter the name of the region: ");
-        strcpy(fileName, regionName);
-        strcat(fileName, FILE_EXT);
-    } while (!fileExists(fileName));
+    const int regionNameLength = strlen(regionName) - FILE_EXT_LENGTH;
 
     do {
-        region.read(fileName);
+        region.read(regionName);
         printf("\n\n=== City Operations ===\n");
-        printf("-> Region: %s\n", regionName);
-        input(&choice, "%d", " 1. Create City\n 2. Edit City\n 3. Delete City\n 0. Back to Main Menu\n Input: ");
+        
+        printf("-> Region: %.*s\n", regionNameLength, regionName);
+        printf(" 1. Create City\n 2. Edit City\n 3. Delete City\n 0. Back to Main Menu\n");
+        input(&choice, "%d", "Input: ");
 
         switch (choice) {
             case CREATE_CITY_MODE:
+                printf("\n--- City Creating ---\n");
+
                 input(&newCity.name, INPUT_SCANF_HOLDER, "Enter the Name of the city to create: ");
                 input(&newCity.population, "%d", "Enter the Population of the city to create: ");
                 input(&newCity.area, "%f", "Enter the Area of the city to create: ");
 
-                city.create(fileName, &newCity);
+                city.create(regionName, &newCity);
                 break;
             case EDIT_CITY_MODE:
+                printf("\n--- City Editing ---\n");
+
                 input(&cityName, INPUT_SCANF_HOLDER, "Enter the current name of the city: ");
                 input(&newCity.name, INPUT_SCANF_HOLDER, "Enter the new Name of the city: ");
                 input(&newCity.population, "%d", "Enter the new Population of the city: ");
                 input(&newCity.area, "%f", "Enter the new Area of the city: ");
 
-                city.edit(fileName, cityName, newCity);
+                city.edit(regionName, cityName, newCity);
                 break;
             case DELETE_CITY_MODE:
+                printf("\n--- City Deleting ---\n");
+
                 input(&cityName, INPUT_SCANF_HOLDER, "Enter the name of the city to delete: ");
 
-                city.delete(fileName, cityName);
+                city.delete(regionName, cityName);
                 break;
             case EXIT_VALUE:
                 printf("Returning to the main menu.\n");
@@ -413,12 +466,11 @@ void handleCityOperations() {
 }
 
 int main() {
-    const char* folderPath = "./";
     int choice = UNDEFINED;
-    printf("\nWith this program, you can create regions and cities.\n");
+    printf("\nWith this program, you can create regions and cities (region = file, city = structure).\n");
 
     do {
-        displayRegions(folderPath);
+        displayRegions(FOLDER_PATH);
         displayMenu();
         input(&choice, "%d", "Input: ");
 
